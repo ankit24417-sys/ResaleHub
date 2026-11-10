@@ -24,6 +24,10 @@ import {
   Check,
   Layers,
   ChevronRight,
+  Send,
+  Upload,
+  AlertCircle,
+  FileCheck,
 } from 'lucide-react';
 
 interface ListingDetail {
@@ -107,7 +111,23 @@ export default function ListingDetailPage() {
   const [agreedLiquidity, setAgreedLiquidity] = useState(false);
   const [signingNda, setSigningNda] = useState(false);
   const [ndaError, setNdaError] = useState<string | null>(null);
-  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  // Proof of Funds Update Modal State
+  const [proofModalOpen, setProofModalOpen] = useState(false);
+  const [userLiquidOverride, setUserLiquidOverride] = useState<number | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofFileName, setProofFileName] = useState('');
+
+  // Purchase Offer (LOI) Modal State
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
+  const [cashDownPayment, setCashDownPayment] = useState('');
+  const [financingType, setFinancingType] = useState('SBA 7(a) Loan');
+  const [closingTimelineDays, setClosingTimelineDays] = useState('60');
+  const [offerNotes, setOfferNotes] = useState('');
+  const [submittingOffer, setSubmittingOffer] = useState(false);
+  const [offerSuccess, setOfferSuccess] = useState(false);
 
   const fetchListingData = async () => {
     try {
@@ -128,6 +148,11 @@ export default function ListingDetailPage() {
         setCompany(user.company || '');
         setPhone(user.phone || '');
         setSignature(user.name);
+      }
+
+      if (data.listing?.askingPrice) {
+        setOfferAmount(String(data.listing.askingPrice));
+        setCashDownPayment(String(Math.round(data.listing.askingPrice * 0.3)));
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load listing.');
@@ -178,7 +203,8 @@ export default function ListingDetailPage() {
         throw new Error(data.message || 'Failed to execute NDA.');
       }
 
-      // Re-fetch listing data to receive unlocked private data room
+      setNotification('Non-Disclosure Agreement executed. Signed PDF generated & Virtual Data Room unlocked.');
+      setTimeout(() => setNotification(null), 5000);
       await fetchListingData();
     } catch (err: any) {
       setNdaError(err.message || 'Error processing digital signature.');
@@ -187,9 +213,61 @@ export default function ListingDetailPage() {
     }
   };
 
+  const handleUpdateProofOfFunds = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploadingProof(true);
+    setTimeout(() => {
+      setUploadingProof(false);
+      setProofModalOpen(false);
+      setNotification(`Proof of funds document verified. Liquid capital recorded at $${Number(userLiquidOverride).toLocaleString()}.`);
+      setTimeout(() => setNotification(null), 5000);
+    }, 800);
+  };
+
+  const handleSubmitOffer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingOffer(true);
+
+    try {
+      const res = await fetch('/api/offers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          listingId,
+          offerAmount: Number(offerAmount),
+          cashDownPayment: Number(cashDownPayment),
+          financingType,
+          closingTimelineDays: Number(closingTimelineDays),
+          notes: offerNotes,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to submit offer.');
+      }
+
+      setOfferSuccess(true);
+      setTimeout(() => {
+        setOfferSuccess(false);
+        setOfferModalOpen(false);
+        setNotification('Purchase Offer (LOI) submitted to seller and M&A advisory desk.');
+        setTimeout(() => setNotification(null), 5000);
+      }, 1500);
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit offer.');
+    } finally {
+      setSubmittingOffer(false);
+    }
+  };
+
   const handleDownloadDoc = (docTitle: string) => {
-    setDownloadSuccess(`Access granted: Downloading "${docTitle}" from encrypted VDR vault.`);
-    setTimeout(() => setDownloadSuccess(null), 4000);
+    setNotification(`Access granted: Downloading "${docTitle}" from encrypted VDR vault.`);
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const formatCurrency = (val: number | null | undefined) => {
@@ -200,6 +278,12 @@ export default function ListingDetailPage() {
       maximumFractionDigits: 0,
     }).format(val);
   };
+
+  // FR-BUY-01: Automated 30% Liquid Capital Calculation
+  const askingPrice = listing?.askingPrice || 0;
+  const requiredLiquidCapital = Math.round(0.3 * askingPrice);
+  const activeLiquidCapital = userLiquidOverride !== null ? userLiquidOverride : (user?.liquidCapital || 250000);
+  const isQualifiedBuyer = activeLiquidCapital >= requiredLiquidCapital;
 
   if (isLoading || loading) {
     return (
@@ -324,19 +408,73 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      {/* Download Alert Toast */}
-      {downloadSuccess && (
-        <div className="sticky top-24 z-50 max-w-xl mx-auto my-4 p-4 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-2xl flex items-center justify-between animate-in fade-in">
-          <span>{downloadSuccess}</span>
-          <button onClick={() => setDownloadSuccess(null)} className="ml-2 font-black">✕</button>
+      {/* Notification Toast */}
+      {notification && (
+        <div className="sticky top-24 z-50 max-w-xl mx-auto my-4 p-4 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs shadow-2xl flex items-center justify-between animate-in fade-in">
+          <span>{notification}</span>
+          <button onClick={() => setNotification(null)} className="ml-2 font-black">✕</button>
         </div>
       )}
 
-      {/* 2. Main Body Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* 2. FR-BUY-01: Automated 30% Financial Qualification Status Banner */}
+      {isAuthenticated && askingPrice > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          {isQualifiedBuyer ? (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold">
+                  <Check className="w-5 h-5 stroke-[3]" />
+                </div>
+                <div>
+                  <h4 className="font-black text-xs uppercase text-emerald-950">
+                    FR-BUY-01: Verified Qualified Buyer Status
+                  </h4>
+                  <p className="text-[11px] text-emerald-700">
+                    Your declared liquid capital ({formatCurrency(activeLiquidCapital)}) exceeds the franchisor&apos;s required 30% down payment ({formatCurrency(requiredLiquidCapital)}).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProofModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black uppercase tracking-wider transition-colors shadow-sm"
+              >
+                Update Proof of Funds
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold">
+                  <AlertCircle className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h4 className="font-black text-xs uppercase text-amber-950">
+                    Franchisor Liquidity Notice (30% Asking Price Rule)
+                  </h4>
+                  <p className="text-[11px] text-amber-800">
+                    Franchisor mandates at least 30% liquid equity ({formatCurrency(requiredLiquidCapital)}) for transfer qualification. Your registered liquid capital is {formatCurrency(activeLiquidCapital)}.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProofModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-slate-950 hover:bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider transition-colors shadow-md flex items-center gap-1.5"
+              >
+                <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Upload Proof of Funds</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Main Body Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* Left Column: Overview, Highlights, Teaser Summary */}
+          {/* Left Column: Summary, Highlights, VDR Data */}
           <div className="lg:col-span-7 space-y-8">
             
             {/* Operational Summary */}
@@ -354,7 +492,7 @@ export default function ListingDetailPage() {
                 {listing.teaserSummary}
               </p>
 
-              {/* Key Investment Highlights */}
+              {/* Highlights */}
               <div>
                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-3">
                   Investment Highlights
@@ -436,7 +574,7 @@ export default function ListingDetailPage() {
                           </td>
                         </tr>
                         <tr className="font-black text-sm bg-emerald-50 text-emerald-900 border-t-2 border-emerald-500/20">
-                          <td className="py-3.5 px-4">Net Seller's Discretionary Earnings (SDE)</td>
+                          <td className="py-3.5 px-4">Net Seller&apos;s Discretionary Earnings (SDE)</td>
                           <td className="py-3.5 px-4 text-right text-emerald-700">
                             {formatCurrency(listing.privateData.pnlBreakdown.netDiscretionaryEarnings)}
                           </td>
@@ -491,13 +629,17 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
 
-                  {/* Transfer Stages List */}
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-3">
-                      Mandatory Transfer Stages
+                      PRD 4-Step Milestone Sequence
                     </h4>
                     <div className="space-y-2">
-                      {listing.privateData.franchisorApprovalDetails.transferApprovalStages.map((st, i) => (
+                      {[
+                        '1. Initial Screening & Background Liquidity Review',
+                        '2. FDD Receipt Acknowledgement & Disclosure Period',
+                        '3. Corporate Interview & Brand Culture Evaluation',
+                        '4. Final Franchise Agreement Sign-off & Escrow Settlement',
+                      ].map((st, i) => (
                         <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs font-bold text-slate-800">
                           <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                           <span>{st}</span>
@@ -594,7 +736,7 @@ export default function ListingDetailPage() {
 
           </div>
 
-          {/* Right Column: NDA Signing Pad OR Contact M&A Advisor */}
+          {/* Right Column: NDA Signing Pad OR Unlocked Deal Room Actions */}
           <div className="lg:col-span-5 space-y-8">
             
             {!ndaSigned ? (
@@ -603,13 +745,13 @@ export default function ListingDetailPage() {
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 mb-3">
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Legally Binding Digital NDA</span>
+                    <span>Legally Binding Digital NDA (FR-BUY-02)</span>
                   </div>
                   <h3 className="font-black text-xl text-slate-900 uppercase tracking-tight">
                     EXECUTE NDA TO UNLOCK <span className="text-emerald-500">DATA ROOM</span>
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    By signing below, you gain instant access to the store's exact brand name, street address, audited P&Ls, and franchisor transfer schedules.
+                    By signing below, you generate an official, cryptographically verified PDF and unlock store brand identity, street address, and full 3-year P&Ls.
                   </p>
                 </div>
 
@@ -666,16 +808,14 @@ export default function ListingDetailPage() {
                     <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
                       Electronic Signature (Type full legal name)
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        required
-                        placeholder="/s/ Full Legal Signature"
-                        value={signature}
-                        onChange={(e) => setSignature(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-emerald-500/50 bg-slate-50 font-serif italic text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="/s/ Full Legal Signature"
+                      value={signature}
+                      onChange={(e) => setSignature(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 border-emerald-500/50 bg-slate-50 font-serif italic text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
                     <span className="text-[10px] text-slate-400 mt-1 block">
                       Cryptographically bound to IP {typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}
                     </span>
@@ -703,7 +843,7 @@ export default function ListingDetailPage() {
                         className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                       />
                       <span className="text-[11px] text-slate-600 leading-tight">
-                        I certify that I meet or exceed the franchisor's minimum liquidity requirement of {formatCurrency(150000)}.
+                        I certify that I meet or exceed the franchisor&apos;s minimum liquidity requirement of {formatCurrency(requiredLiquidCapital)}.
                       </span>
                     </label>
                   </div>
@@ -714,7 +854,7 @@ export default function ListingDetailPage() {
                     className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-widest shadow-xl transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                   >
                     {signingNda ? (
-                      <span>Executing NDA...</span>
+                      <span>Generating Signed PDF...</span>
                     ) : (
                       <>
                         <Lock className="w-4 h-4 stroke-[2.5]" />
@@ -732,33 +872,47 @@ export default function ListingDetailPage() {
                     <Check className="w-5 h-5 stroke-[3]" />
                   </div>
                   <div>
-                    <h4 className="font-black text-xs text-emerald-950 uppercase">NDA Executed</h4>
-                    <p className="text-[11px] text-emerald-700">Digital credentials verified for this listing</p>
+                    <h4 className="font-black text-xs text-emerald-950 uppercase">NDA Executed & Bound</h4>
+                    <p className="text-[11px] text-emerald-700">Audit trail active • Token: {listingId.slice(-6).toUpperCase()}</p>
                   </div>
                 </div>
 
+                {/* FR-BUY-02: Download Executed Legal NDA PDF Button */}
+                <a
+                  href={`/api/nda/download/${listingId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-700 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 transition-colors shadow-sm"
+                >
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <span>Download Executed NDA (PDF)</span>
+                </a>
+
+                {/* Purchase Offer (LOI) Submission Button */}
                 <div>
                   <h3 className="font-black text-lg text-slate-900 uppercase tracking-tight">
-                    NEXT DUE DILIGENCE STEPS
+                    PURCHASE OFFER & ACQUISITION
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Our Senior M&A intermediary is available to coordinate a private after-hours site inspection or schedule a conference call with the franchisor transfer director.
+                    Submit a binding Letter of Intent (LOI) directly to the seller and franchise transfer director.
                   </p>
                 </div>
 
                 <div className="space-y-3">
-                  <Link
-                    href="/contact"
-                    className="w-full py-3.5 px-4 rounded-xl bg-slate-950 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest text-center block transition-colors shadow-md"
+                  <button
+                    type="button"
+                    onClick={() => setOfferModalOpen(true)}
+                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-widest text-center flex items-center justify-center gap-2 transition-colors shadow-lg"
                   >
-                    Schedule Private Store Tour
-                  </Link>
+                    <FileCheck className="w-4 h-4 stroke-[2.5]" />
+                    <span>SUBMIT PURCHASE OFFER (LOI)</span>
+                  </button>
 
                   <Link
                     href="/contact"
                     className="w-full py-3.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-extrabold text-xs uppercase tracking-wider text-center block transition-colors"
                   >
-                    Submit Letter of Intent (LOI)
+                    Schedule Private Store Tour
                   </Link>
                 </div>
 
@@ -775,7 +929,239 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
+      {/* PROOF OF FUNDS UPDATE MODAL (FR-BUY-01) */}
+      {proofModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-slate-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-black text-lg text-slate-900 uppercase">
+                SUBMIT PROOF OF FUNDS
+              </h3>
+              <button
+                type="button"
+                onClick={() => setProofModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 font-black text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Upload a bank statement, CPA certification letter, or verified liquidity schedule to satisfy franchisor transfer criteria (&gt;30% asking price).
+            </p>
+
+            <form onSubmit={handleUpdateProofOfFunds} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                  Verified Liquid Capital Amount ($ USD)
+                </label>
+                <input
+                  type="number"
+                  required
+                  defaultValue={activeLiquidCapital}
+                  onChange={(e) => setUserLiquidOverride(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                  Attach Supporting Document (PDF / Image)
+                </label>
+                <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-emerald-500 transition-colors">
+                  <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+                  <span className="text-xs text-slate-600 font-bold block">
+                    {proofFileName || 'Click to select Bank Statement or CPA Letter'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => setProofFileName(e.target.files?.[0]?.name || '')}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer text-[10px] text-emerald-600 uppercase font-black underline mt-1 block">
+                    Browse File
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setProofModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingProof}
+                  className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-colors shadow-md disabled:opacity-50"
+                >
+                  {uploadingProof ? 'Verifying...' : 'Submit Proof'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* PURCHASE OFFER (LOI) SUBMISSION MODAL */}
+      {offerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full border border-slate-200 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                  Definitive Acquisition Document
+                </span>
+                <h3 className="font-black text-xl text-slate-900 uppercase">
+                  SUBMIT PURCHASE OFFER (LOI)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOfferModalOpen(false)}
+                className="text-slate-400 hover:text-slate-900 font-black text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {offerSuccess ? (
+              <div className="text-center py-8 space-y-3">
+                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
+                  <Check className="w-7 h-7 stroke-[3]" />
+                </div>
+                <h4 className="font-black text-lg text-slate-900 uppercase">Offer Successfully Delivered</h4>
+                <p className="text-xs text-slate-600">The seller has been notified and will review your terms.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitOffer} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                      Offer Purchase Price ($ USD)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={offerAmount}
+                      onChange={(e) => setOfferAmount(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                      Cash Down Payment ($ USD)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      value={cashDownPayment}
+                      onChange={(e) => setCashDownPayment(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-black text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                      Financing Structure
+                    </label>
+                    <select
+                      value={financingType}
+                      onChange={(e) => setFinancingType(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="SBA 7(a) Loan">SBA 7(a) Loan (70-80%)</option>
+                      <option value="All Cash">All Cash / Equity</option>
+                      <option value="Seller Financing">Seller Financing (20%)</option>
+                      <option value="Conventional Bank">Conventional Commercial Loan</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                      Target Closing Timeline
+                    </label>
+                    <select
+                      value={closingTimelineDays}
+                      onChange={(e) => setClosingTimelineDays(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="45">45 Days Expedited</option>
+                      <option value="60">60 Days Standard</option>
+                      <option value="90">90 Days Extended</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                    Standard Closing Contingencies
+                  </label>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px] text-slate-700 font-medium">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Franchisor Corporate Transfer Approval</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Commercial Landlord Lease Assignment Consent</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>CPA Final Financial & Asset Audit Verification</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-600 mb-1">
+                    Offer Notes or Transition Terms
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Specify requests e.g. 4 weeks owner transition assistance..."
+                    value={offerNotes}
+                    onChange={(e) => setOfferNotes(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setOfferModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-wider"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingOffer}
+                    className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {submittingOffer ? (
+                      <span>Delivering Offer...</span>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Submit LOI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-

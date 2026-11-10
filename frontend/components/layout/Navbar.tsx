@@ -120,13 +120,33 @@ export const Navbar = () => {
 
                     <div className="py-1">
                       {user.role === 'seller' && (
+                        <>
+                          <Link
+                            href="/seller/offers"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                          >
+                            <Briefcase className="w-4 h-4 text-emerald-500" />
+                            Review Purchase Offers (LOIs)
+                          </Link>
+                          <Link
+                            href="/seller/create"
+                            onClick={() => setUserDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                          >
+                            <PlusCircle className="w-4 h-4 text-emerald-500" />
+                            Seller Listing Studio
+                          </Link>
+                        </>
+                      )}
+                      {user.role === 'franchisor' && (
                         <Link
-                          href="/seller/create"
+                          href="/franchisor/dashboard"
                           onClick={() => setUserDropdownOpen(false)}
                           className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
                         >
-                          <PlusCircle className="w-4 h-4 text-emerald-500" />
-                          Seller Listing Studio
+                          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                          Franchisor Transfer Queue
                         </Link>
                       )}
                       <Link
@@ -220,12 +240,30 @@ export const Navbar = () => {
                   </span>
                 </div>
                 {user.role === 'seller' && (
+                  <div className="space-y-2">
+                    <Link
+                      href="/seller/offers"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-center w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs uppercase tracking-wider"
+                    >
+                      Review Purchase Offers (LOIs)
+                    </Link>
+                    <Link
+                      href="/seller/create"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block text-center w-full py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider"
+                    >
+                      + Create Blind Resale Listing
+                    </Link>
+                  </div>
+                )}
+                {user.role === 'franchisor' && (
                   <Link
-                    href="/seller/create"
+                    href="/franchisor/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
                     className="block text-center w-full py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider"
                   >
-                    + Create Blind Resale Listing
+                    Franchisor Transfer Queue
                   </Link>
                 )}
                 <button

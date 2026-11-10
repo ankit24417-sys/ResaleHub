@@ -17,6 +17,8 @@ import {
   ChevronRight,
   FileText,
   AlertCircle,
+  FileCheck,
+  Sparkles,
 } from 'lucide-react';
 
 interface TransferCandidate {
@@ -28,7 +30,10 @@ interface TransferCandidate {
   region: string;
   liquidCapital: number;
   netWorth: number;
-  stage: number; // 1 to 6
+  creditScore: string;
+  backgroundCheckStatus: 'Clear' | 'In Review' | 'Flagged';
+  fddAcknowledgedDate: string;
+  stage: number; // 1 to 4 (PRD 4-Step State Machine)
   status: 'In Review' | 'Approved' | 'Action Needed';
 }
 
@@ -42,7 +47,10 @@ const INITIAL_CANDIDATES: TransferCandidate[] = [
     region: 'Denver Metro, CO',
     liquidCapital: 750000,
     netWorth: 2500000,
-    stage: 3,
+    creditScore: '755 (FICO - Tier 1 Excellent)',
+    backgroundCheckStatus: 'Clear',
+    fddAcknowledgedDate: '2026-10-18',
+    stage: 2,
     status: 'In Review',
   },
   {
@@ -54,8 +62,11 @@ const INITIAL_CANDIDATES: TransferCandidate[] = [
     region: 'Austin Metro, TX',
     liquidCapital: 340000,
     netWorth: 1800000,
-    stage: 4,
-    status: 'Approved',
+    creditScore: '728 (FICO - Prime)',
+    backgroundCheckStatus: 'Clear',
+    fddAcknowledgedDate: '2026-09-30',
+    stage: 3,
+    status: 'In Review',
   },
   {
     id: 'tx-103',
@@ -66,18 +77,20 @@ const INITIAL_CANDIDATES: TransferCandidate[] = [
     region: 'Tampa Bay Area, FL',
     liquidCapital: 195000,
     netWorth: 620000,
-    stage: 2,
+    creditScore: '695 (FICO - Good)',
+    backgroundCheckStatus: 'Clear',
+    fddAcknowledgedDate: '2026-10-24',
+    stage: 1,
     status: 'Action Needed',
   },
 ];
 
+// Exact PRD FR-FRA-02 Four-Step Sequential State Machine
 const STAGES = [
-  '1. Background & Liquidity',
-  '2. Brand Discovery Interview',
-  '3. Committee Approval',
-  '4. Agreement & Lease',
-  '5. Operator Certification',
-  '6. Escrow Closing',
+  '1. Initial Screening',
+  '2. FDD Receipt Acknowledgement',
+  '3. Corporate Interview',
+  '4. Final Franchise Agreement Sign-off',
 ];
 
 export default function FranchisorDashboardPage() {
@@ -89,8 +102,8 @@ export default function FranchisorDashboardPage() {
     setCandidates((prev) =>
       prev.map((c) => {
         if (c.id === id) {
-          const nextStage = Math.min(c.stage + 1, 6);
-          const isDone = nextStage === 6;
+          const nextStage = Math.min(c.stage + 1, 4);
+          const isFinal = nextStage === 4;
           setNotification(
             `Candidate ${c.candidateName} advanced to Stage ${nextStage}: ${STAGES[nextStage - 1]}`
           );
@@ -98,7 +111,7 @@ export default function FranchisorDashboardPage() {
           return {
             ...c,
             stage: nextStage,
-            status: isDone ? 'Approved' : 'In Review',
+            status: isFinal ? 'Approved' : 'In Review',
           };
         }
         return c;
@@ -118,10 +131,10 @@ export default function FranchisorDashboardPage() {
     <div className="min-h-screen bg-slate-50">
       {/* 1. Header */}
       <PageHeader
-        badge="Franchisor Corporate Desk"
-        title="TRANSFER APPROVAL"
+        badge="Franchisor Corporate Desk (FR-FRA-01 / 02)"
+        title="CORPORATE TRANSFER"
         highlightWord="PIPELINE"
-        subtitle="Manage brand compliance, audit incoming buyer capital, and execute corporate transfer authorizations across all active resale locations."
+        subtitle="Manage brand compliance, audit incoming buyer capital, and execute sequential 4-stage transfer approvals across your franchise system."
         bgImageUrl="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1920&q=80"
       />
 
@@ -144,8 +157,8 @@ export default function FranchisorDashboardPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Active Store Transfers
               </span>
-              <p className="font-black text-3xl text-slate-900 mt-1">3 Resales</p>
-              <p className="text-[11px] text-emerald-600 font-bold mt-0.5">100% on schedule</p>
+              <p className="font-black text-3xl text-slate-900 mt-1">3 Candidates</p>
+              <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Brand transfer queue</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
               <Building className="w-6 h-6" />
@@ -171,7 +184,7 @@ export default function FranchisorDashboardPage() {
                 Average Buyer Liquidity
               </span>
               <p className="font-black text-3xl text-slate-900 mt-1">$428,000</p>
-              <p className="text-[11px] text-emerald-600 font-bold mt-0.5">2.8x minimum brand floor</p>
+              <p className="text-[11px] text-emerald-600 font-bold mt-0.5">&gt; 30% Asking Price Rule</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
               <DollarSign className="w-6 h-6" />
@@ -184,7 +197,7 @@ export default function FranchisorDashboardPage() {
                 Escrow Transfer Fees
               </span>
               <p className="font-black text-3xl text-slate-900 mt-1">$37,500</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Reimbursed to franchisor</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Guaranteed closing escrow</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
               <ShieldCheck className="w-6 h-6" />
@@ -197,10 +210,10 @@ export default function FranchisorDashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                Live Brand Governance
+                PRD 4-Step Sequential State Machine
               </span>
               <h3 className="font-black text-2xl text-slate-900 uppercase tracking-tight">
-                INCOMING BUYER CANDIDATE QUEUE
+                TRANSFER MILESTONE APPROVAL QUEUE
               </h3>
             </div>
             <span className="px-4 py-1.5 rounded-full bg-slate-950 text-emerald-400 font-black text-xs uppercase tracking-wider">
@@ -216,14 +229,14 @@ export default function FranchisorDashboardPage() {
                 className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-500/50 transition-all space-y-5"
               >
                 {/* Top Info */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1.5">
                       <span className="px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-900 text-white">
                         {c.brand}
                       </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        Unit: {c.storeUnit} ({c.region})
+                      <span className="text-xs text-slate-500 font-bold">
+                        Unit: {c.storeUnit} • {c.region}
                       </span>
                     </div>
                     <h4 className="font-black text-lg text-slate-900 uppercase">
@@ -232,36 +245,57 @@ export default function FranchisorDashboardPage() {
                     </h4>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs">
-                    <div className="text-right">
-                      <span className="text-[10px] font-black uppercase text-slate-400 block">
-                        Verified Liquidity
+                  {/* Vetting Profiles (Credit Score, Background, Liquidity, Net Worth) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[9px] font-black uppercase text-slate-400 block">
+                        Credit Score
                       </span>
-                      <span className="font-black text-emerald-600 text-sm">
+                      <span className="font-black text-slate-900 text-xs">
+                        {c.creditScore}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[9px] font-black uppercase text-slate-400 block">
+                        Background Check
+                      </span>
+                      <span className="font-black text-emerald-600 text-xs flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                        {c.backgroundCheckStatus}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[9px] font-black uppercase text-slate-400 block">
+                        Liquid Capital
+                      </span>
+                      <span className="font-black text-emerald-600 text-xs">
                         {formatCurrency(c.liquidCapital)}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-black uppercase text-slate-400 block">
+
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[9px] font-black uppercase text-slate-400 block">
                         Audited Net Worth
                       </span>
-                      <span className="font-black text-slate-900 text-sm">
+                      <span className="font-black text-slate-900 text-xs">
                         {formatCurrency(c.netWorth)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* 6-Stage Progress Indicator */}
+                {/* Exact 4-Step State Machine Pipeline */}
                 <div className="pt-2">
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-[10px] font-bold">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[10px] font-bold">
                     {STAGES.map((st, idx) => {
                       const isComplete = c.stage > idx + 1;
                       const isCurrent = c.stage === idx + 1;
                       return (
                         <div
                           key={idx}
-                          className={`p-2.5 rounded-xl text-center border transition-all ${
+                          className={`p-3 rounded-xl text-center border transition-all ${
                             isComplete
                               ? 'bg-emerald-500 text-slate-950 border-emerald-500 font-black'
                               : isCurrent
@@ -270,8 +304,9 @@ export default function FranchisorDashboardPage() {
                           }`}
                         >
                           <span className="block truncate">{st}</span>
-                          {isComplete && <span className="text-[9px] uppercase">✓ Done</span>}
-                          {isCurrent && <span className="text-[9px] uppercase">● Active</span>}
+                          {isComplete && <span className="text-[9px] uppercase">✓ Completed</span>}
+                          {isCurrent && <span className="text-[9px] uppercase">● Active Gate</span>}
+                          {!isComplete && !isCurrent && <span className="text-[9px] uppercase">○ Pending</span>}
                         </div>
                       );
                     })}
@@ -289,13 +324,25 @@ export default function FranchisorDashboardPage() {
                     <button
                       type="button"
                       onClick={() => handleAdvanceStage(c.id)}
-                      disabled={c.stage >= 6}
+                      disabled={c.stage >= 4 && c.status === 'Approved'}
                       className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 shadow-md flex items-center gap-1.5"
                     >
-                      <span>
-                        {c.stage >= 6 ? 'Transfer Completed' : 'Advance to Next Stage'}
-                      </span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      {c.stage === 3 ? (
+                        <>
+                          <FileCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Issue Final Brand Transfer Sign-off</span>
+                        </>
+                      ) : c.stage >= 4 ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Transfer Fully Approved</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Advance to Stage {c.stage + 1}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -309,4 +356,3 @@ export default function FranchisorDashboardPage() {
     </div>
   );
 }
-

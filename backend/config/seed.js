@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import User from '../models/User.js';
+import Listing from '../models/Listing.js';
 
 export const seedUsers = [
   {
@@ -544,9 +546,6 @@ export const seedListings = [
 
 export async function runSeed(mongooseInstance) {
   try {
-    const User = mongooseInstance.models.User;
-    const Listing = mongooseInstance.models.Listing;
-
     console.log('[Seed] Clearing existing collections...');
     await User.deleteMany({});
     await Listing.deleteMany({});
@@ -554,11 +553,9 @@ export async function runSeed(mongooseInstance) {
     console.log('[Seed] Inserting users...');
     const createdUsers = [];
     for (const u of seedUsers) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(u.password, salt);
       const user = await User.create({
         ...u,
-        password: hashedPassword,
+        password: u.password,
       });
       createdUsers.push(user);
     }

@@ -10,6 +10,8 @@ export interface User {
   company?: string;
   phone?: string;
   isVerified?: boolean;
+  netWorth?: number;
+  liquidCapital?: number;
 }
 
 interface AuthContextType {

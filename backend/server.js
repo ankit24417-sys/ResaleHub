@@ -6,6 +6,7 @@ import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import listingRoutes from './routes/listingRoutes.js';
 import ndaRoutes from './routes/ndaRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/nda', ndaRoutes);
+app.use('/api/offers', offerRoutes);
 
 // Global 404 handler for unknown routes
 app.use((req, res) => {

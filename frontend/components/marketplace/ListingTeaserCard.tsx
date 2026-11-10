@@ -19,6 +19,7 @@ export interface ListingTeaser {
   _id: string;
   publicTitle: string;
   category: string;
+  brand?: string;
   region: string;
   state: string;
   askingPrice: number | null;

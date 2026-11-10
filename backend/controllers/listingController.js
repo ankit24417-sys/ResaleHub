@@ -26,7 +26,7 @@ const getUserFromRequest = (req) => {
 
 export const getPublicTeasers = async (req, res) => {
   try {
-    const { category, state, minPrice, maxPrice, search } = req.query;
+    const { category, state, minPrice, maxPrice, search, brand } = req.query;
     const currentUser = getUserFromRequest(req);
     const isAuthenticated = !!currentUser;
 
@@ -37,6 +37,12 @@ export const getPublicTeasers = async (req, res) => {
 
       if (category && category !== 'All Categories') {
         filter.category = category;
+      }
+      if (brand && brand !== 'All Brands') {
+        filter.$or = [
+          { 'privateData.brandName': { $regex: brand, $options: 'i' } },
+          { publicTitle: { $regex: brand, $options: 'i' } },
+        ];
       }
       if (state && state !== 'All States') {
         filter.state = state.toUpperCase();
@@ -62,6 +68,12 @@ export const getPublicTeasers = async (req, res) => {
       listings = inMemoryListings.filter((item) => {
         if (item.status !== 'active') return false;
         if (category && category !== 'All Categories' && item.category !== category) return false;
+        if (brand && brand !== 'All Brands') {
+          const bMatch =
+            (item.privateData?.brandName || '').toLowerCase().includes(brand.toLowerCase()) ||
+            item.publicTitle.toLowerCase().includes(brand.toLowerCase());
+          if (!bMatch) return false;
+        }
         if (state && state !== 'All States' && item.state !== state.toUpperCase()) return false;
         if (minPrice && item.askingPrice < Number(minPrice)) return false;
         if (maxPrice && item.askingPrice > Number(maxPrice)) return false;
@@ -182,6 +194,18 @@ export const getListingById = async (req, res) => {
       }
     }
 
+    // 30% Liquid Capital Financial Vetting Rule (FR-BUY-01)
+    const askingPrice = listingObj.askingPrice || 0;
+    const requiredLiquidCapital = Math.round(0.3 * askingPrice);
+    const userLiquidCapital = currentUser?.liquidCapital || 0;
+    const isQualifiedBuyer = userLiquidCapital >= requiredLiquidCapital;
+    const qualification = {
+      requiredLiquidCapital,
+      userLiquidCapital,
+      isQualifiedBuyer,
+      thresholdPercentage: 30,
+    };
+
     if (!ndaSigned) {
       // Return public and financial metrics, but protect confidential privateData
       delete listingObj.privateData;
@@ -190,6 +214,7 @@ export const getListingById = async (req, res) => {
         success: true,
         isAuthenticated,
         ndaSigned: false,
+        qualification,
         listing: {
           ...listingObj,
           askingPrice: isAuthenticated ? listingObj.askingPrice : null,
@@ -205,6 +230,7 @@ export const getListingById = async (req, res) => {
       success: true,
       isAuthenticated: true,
       ndaSigned: true,
+      qualification,
       ndaAgreement: ndaAgreement
         ? {
             signedAt: ndaAgreement.signedAt,

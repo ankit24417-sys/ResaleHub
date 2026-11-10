@@ -1,11 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Search, Filter, RotateCcw, Building2, MapPin, DollarSign } from 'lucide-react';
+import { Search, Filter, RotateCcw, Building2, MapPin, DollarSign, Award } from 'lucide-react';
 
-interface FilterState {
+export interface FilterState {
   search: string;
   category: string;
+  brand: string;
   state: string;
   priceRange: string;
 }
@@ -24,6 +25,15 @@ const CATEGORIES = [
   'Automotive Services',
   'Commercial & Home Services',
   'Health & Medical',
+];
+
+const BRANDS = [
+  'All Brands',
+  "Jersey Mike's",
+  'Anytime Fitness',
+  'AAMCO',
+  'JAN-PRO',
+  'Visiting Angels',
 ];
 
 const STATES = [
@@ -55,6 +65,7 @@ export const SearchFilters = ({
   const hasActiveFilters =
     filters.search ||
     filters.category !== 'All Categories' ||
+    filters.brand !== 'All Brands' ||
     filters.state !== 'All States' ||
     filters.priceRange !== 'All Prices';
 
@@ -90,7 +101,7 @@ export const SearchFilters = ({
         </div>
 
         {/* Filter Input Grid */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           
           {/* Keyword Search */}
           <div className="relative">
@@ -127,6 +138,30 @@ export const SearchFilters = ({
                 ))}
               </select>
               <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                ▼
+              </div>
+            </div>
+          </div>
+
+          {/* Franchise Brand Dropdown (FR-BUY-03) */}
+          <div>
+            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">
+              Franchise Brand
+            </label>
+            <div className="relative">
+              <select
+                value={filters.brand}
+                onChange={(e) => handleChange('brand', e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all cursor-pointer appearance-none"
+              >
+                {BRANDS.map((br) => (
+                  <option key={br} value={br}>
+                    {br}
+                  </option>
+                ))}
+              </select>
+              <Award className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
                 ▼
               </div>

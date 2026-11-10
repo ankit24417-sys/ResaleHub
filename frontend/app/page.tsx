@@ -23,6 +23,7 @@ const FALLBACK_LISTINGS: ListingTeaser[] = [
     _id: '663f10111111111111111101',
     publicTitle: 'High-Volume QSR Franchise - North Denver Metro',
     category: 'Food & Beverage',
+    brand: "Jersey Mike's",
     region: 'Denver Metro, CO',
     state: 'CO',
     askingPrice: 1450000,
@@ -45,6 +46,7 @@ const FALLBACK_LISTINGS: ListingTeaser[] = [
     _id: '663f10111111111111111102',
     publicTitle: 'Turnkey 24/7 Boutique Fitness Studio - North Austin',
     category: 'Fitness & Wellness',
+    brand: 'Anytime Fitness',
     region: 'Austin Metro, TX',
     state: 'TX',
     askingPrice: 895000,
@@ -67,6 +69,7 @@ const FALLBACK_LISTINGS: ListingTeaser[] = [
     _id: '663f10111111111111111103',
     publicTitle: 'Premier Multi-Bay Transmission & Auto Repair Center',
     category: 'Automotive Services',
+    brand: 'AAMCO',
     region: 'Phoenix East Valley, AZ',
     state: 'AZ',
     askingPrice: 1150000,
@@ -89,6 +92,7 @@ const FALLBACK_LISTINGS: ListingTeaser[] = [
     _id: '663f10111111111111111104',
     publicTitle: 'Essential Commercial Cleaning & Disinfection Franchise',
     category: 'Commercial & Home Services',
+    brand: 'JAN-PRO',
     region: 'Tampa Bay Area, FL',
     state: 'FL',
     askingPrice: 625000,
@@ -111,6 +115,7 @@ const FALLBACK_LISTINGS: ListingTeaser[] = [
     _id: '663f10111111111111111105',
     publicTitle: 'Accredited In-Home Senior Care & Companion Agency',
     category: 'Health & Medical',
+    brand: 'Visiting Angels',
     region: 'Charlotte Metro, NC',
     state: 'NC',
     askingPrice: 1850000,
@@ -139,6 +144,7 @@ export default function HomePage() {
   const [filters, setFilters] = useState({
     search: '',
     category: 'All Categories',
+    brand: 'All Brands',
     state: 'All States',
     priceRange: 'All Prices',
   });
@@ -171,6 +177,14 @@ export default function HomePage() {
       if (filters.category !== 'All Categories' && item.category !== filters.category) {
         return false;
       }
+      if (filters.brand !== 'All Brands') {
+        const b = filters.brand.toLowerCase();
+        const brandMatch =
+          (item.brand && item.brand.toLowerCase().includes(b)) ||
+          item.publicTitle.toLowerCase().includes(b) ||
+          item.teaserSummary.toLowerCase().includes(b);
+        if (!brandMatch) return false;
+      }
       if (filters.state !== 'All States' && item.state !== filters.state) {
         return false;
       }
@@ -196,6 +210,7 @@ export default function HomePage() {
     setFilters({
       search: '',
       category: 'All Categories',
+      brand: 'All Brands',
       state: 'All States',
       priceRange: 'All Prices',
     });
