@@ -240,7 +240,7 @@ export default function HomePage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 text-white font-extrabold text-xs uppercase tracking-wider hover:bg-emerald-600 transition-colors shadow-sm"
               >
                 <Lock className="w-3 h-3 text-emerald-400" />
-                Sign In to Unlock Financials
+                Login to Unlock Financials
               </Link>
             </div>
           )}

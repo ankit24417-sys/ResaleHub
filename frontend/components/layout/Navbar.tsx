@@ -161,7 +161,7 @@ export const Navbar = () => {
                   className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-extrabold uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
                 >
                   <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
-                  LOGIN / SIGN UP
+                  LOGIN / CREATE ACCOUNT
                 </Link>
               </div>
             )}
@@ -174,7 +174,7 @@ export const Navbar = () => {
                 href="/login"
                 className="px-4 py-2 rounded-full text-xs font-extrabold uppercase tracking-widest bg-emerald-500 text-white"
               >
-                Sign In
+                Login
               </Link>
             )}
             <button
@@ -244,7 +244,7 @@ export const Navbar = () => {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-center w-full py-3 rounded-xl bg-emerald-500 text-white font-black text-xs uppercase tracking-widest shadow-md"
               >
-                Sign In / Register
+                Login / Create Account
               </Link>
             )}
           </div>

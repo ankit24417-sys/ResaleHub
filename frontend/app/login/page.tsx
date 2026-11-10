@@ -5,12 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
-  ShieldCheck,
   Lock,
   Mail,
   User,
   ArrowRight,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 function LoginContent() {
@@ -91,39 +91,33 @@ function LoginContent() {
 
   return (
     <div className="relative max-w-md w-full mx-auto space-y-8">
-      {/* Brand Header */}
-      <div className="text-center">
-        <Link href="/" className="inline-flex items-center gap-3 group">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 shadow-xl group-hover:border-emerald-500/50 transition-all">
-            <ShieldCheck className="w-7 h-7 stroke-[2.2]" />
-          </div>
-          <span className="font-black text-2xl tracking-tight text-white uppercase">
-            RESALE<span className="text-emerald-500">HUB</span>
-          </span>
-        </Link>
-        <h2 className="mt-4 font-black text-2xl uppercase tracking-tight text-white">
-          {activeTab === 'login' ? 'SIGN IN TO YOUR PORTAL' : 'CREATE CONFIDENTIAL ACCOUNT'}
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">
-          Access blind resale teasers, digital NDAs, and Virtual Data Rooms.
+      {/* Page Title & Subhead (redundant logo removed since navbar displays it) */}
+      <div className="text-center pt-2">
+        <h1 className="font-black text-3xl sm:text-4xl uppercase tracking-tight text-white">
+          {activeTab === 'login' ? 'LOGIN' : 'CREATE ACCOUNT'}
+        </h1>
+        <p className="mt-2 text-xs sm:text-sm text-slate-400 font-medium">
+          {activeTab === 'login'
+            ? 'Access confidential franchise resales, digital NDAs, and Virtual Data Rooms.'
+            : 'Register for verified buyer, seller, franchisor, or advisor deal room access.'}
         </p>
       </div>
 
-      {/* Tab Toggle */}
-      <div className="flex rounded-2xl bg-slate-900/90 p-1.5 border border-slate-800">
+      {/* Tab Toggle: Login / Create Account */}
+      <div className="flex rounded-2xl bg-slate-900/90 p-1.5 border border-slate-800 shadow-lg">
         <button
           type="button"
           onClick={() => {
             setActiveTab('login');
             setError(null);
           }}
-          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+          className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 ${
             activeTab === 'login'
               ? 'bg-emerald-500 text-slate-950 shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          Sign In
+          Login
         </button>
         <button
           type="button"
@@ -131,18 +125,18 @@ function LoginContent() {
             setActiveTab('register');
             setError(null);
           }}
-          className={`flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
+          className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 ${
             activeTab === 'register'
               ? 'bg-emerald-500 text-slate-950 shadow-md'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          Register
+          Create Account
         </button>
       </div>
 
       {/* 1-Click Demo Accounts Selector */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5">
+      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-black uppercase tracking-widest">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Instant Demo Quick-Switch</span>
@@ -190,9 +184,10 @@ function LoginContent() {
         </div>
       )}
 
-      {/* Main Form Container */}
+      {/* Main Form Surface */}
       <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl">
         {activeTab === 'login' ? (
+          /* LOGIN FORM */
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">
@@ -234,16 +229,33 @@ function LoginContent() {
               className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-widest shadow-xl transition-all duration-200 disabled:opacity-50 mt-4 flex items-center justify-center gap-2"
             >
               {loading ? (
-                <span>Signing In...</span>
+                <span>Logging In...</span>
               ) : (
                 <>
-                  <span>SIGN IN TO PORTAL</span>
+                  <span>LOGIN</span>
                   <ArrowRight className="w-4 h-4 stroke-[3]" />
                 </>
               )}
             </button>
+
+            <div className="pt-4 border-t border-slate-100 text-center">
+              <p className="text-xs text-slate-500">
+                Don&apos;t have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('register');
+                    setError(null);
+                  }}
+                  className="text-emerald-600 font-bold hover:underline"
+                >
+                  Create Account
+                </button>
+              </p>
+            </div>
           </form>
         ) : (
+          /* CREATE ACCOUNT FORM */
           <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
             <div>
               <label className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-500 mb-1">
@@ -361,14 +373,30 @@ function LoginContent() {
               className="w-full py-3.5 rounded-xl bg-slate-950 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-xl transition-all duration-200 disabled:opacity-50 mt-4 flex items-center justify-center gap-2"
             >
               {loading ? (
-                <span>Registering Account...</span>
+                <span>Creating Account...</span>
               ) : (
                 <>
-                  <span>REGISTER & UNLOCK MARKETPLACE</span>
+                  <span>CREATE ACCOUNT</span>
                   <ArrowRight className="w-4 h-4 stroke-[3]" />
                 </>
               )}
             </button>
+
+            <div className="pt-4 border-t border-slate-100 text-center">
+              <p className="text-xs text-slate-500">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('login');
+                    setError(null);
+                  }}
+                  className="text-emerald-600 font-bold hover:underline"
+                >
+                  Login
+                </button>
+              </p>
+            </div>
           </form>
         )}
       </div>
@@ -392,7 +420,7 @@ export default function LoginPage() {
       <Suspense
         fallback={
           <div className="text-center text-white text-xs uppercase tracking-widest font-black">
-            Loading Authentication Portal...
+            Loading Portal...
           </div>
         }
       >

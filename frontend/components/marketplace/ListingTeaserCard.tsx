@@ -151,7 +151,7 @@ export const ListingTeaserCard = ({ listing }: ListingTeaserCardProps) => {
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[11px] uppercase tracking-widest shadow-md transition-all hover:scale-105"
                 >
                   <Unlock className="w-3 h-3 stroke-[2.5]" />
-                  Sign In to Unlock
+                  Login to Unlock
                 </Link>
               </div>
             </div>
