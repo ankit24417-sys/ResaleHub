@@ -36,7 +36,7 @@ function loadRootEnv() {
 
 loadRootEnv();
 
-// Normalize API URL so values like "https://resale-hub-tau.vercel.app/" or ".../api" both resolve cleanly
+// Normalize API URL so trailing slashes or omitted "/api" suffixes resolve cleanly
 const rawApiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api')
   .trim()
   .replace(/\/+$/, '');

@@ -2,7 +2,9 @@ import TransferApplication from '../models/TransferApplication.js';
 
 export const getTransfers = async (req, res) => {
   try {
-    const transfers = await TransferApplication.find({}).sort({ createdAt: -1 });
+    const transfers = await TransferApplication.find({})
+      .populate('listing', 'grossRevenue privateData.franchisorApprovalDetails.transferFee')
+      .sort({ createdAt: -1 });
     return res.json({
       success: true,
       count: transfers.length,
@@ -33,6 +35,7 @@ export const advanceTransferStage = async (req, res) => {
     transfer.stage = nextStage;
     transfer.status = nextStage === 4 ? 'Approved' : 'In Review';
     await transfer.save();
+    await transfer.populate('listing', 'grossRevenue privateData.franchisorApprovalDetails.transferFee');
 
     return res.json({
       success: true,

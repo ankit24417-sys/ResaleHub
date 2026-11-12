@@ -36,6 +36,14 @@ interface TransferCandidate {
   fddAcknowledgedDate: string;
   stage: number; // 1 to 4 (PRD 4-Step State Machine)
   status: 'In Review' | 'Approved' | 'Action Needed';
+  listing?: {
+    grossRevenue?: number;
+    privateData?: {
+      franchisorApprovalDetails?: {
+        transferFee?: number;
+      };
+    };
+  };
 }
 
 // Exact PRD FR-FRA-02 Four-Step Sequential State Machine
@@ -120,6 +128,16 @@ export default function FranchisorDashboardPage() {
         )
       : 0;
 
+  const annualRoyaltyProtected = candidates.reduce(
+    (sum, c) => sum + Math.round((c.listing?.grossRevenue || 0) * 0.06),
+    0
+  );
+
+  const escrowTransferFees = candidates.reduce(
+    (sum, c) => sum + (c.listing?.privateData?.franchisorApprovalDetails?.transferFee || 0),
+    0
+  );
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -171,7 +189,7 @@ export default function FranchisorDashboardPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Annual Royalty Protected
               </span>
-              <p className="font-black text-3xl text-emerald-600 mt-1">$312,500</p>
+              <p className="font-black text-3xl text-emerald-600 mt-1">{formatCurrency(annualRoyaltyProtected)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Recurring system revenues</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold border border-emerald-200">
@@ -197,7 +215,7 @@ export default function FranchisorDashboardPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Escrow Transfer Fees
               </span>
-              <p className="font-black text-3xl text-slate-900 mt-1">$37,500</p>
+              <p className="font-black text-3xl text-slate-900 mt-1">{formatCurrency(escrowTransferFees)}</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Guaranteed closing escrow</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
