@@ -24,27 +24,13 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Attempt lookup in DB if mongoose is connected
-    let user = null;
-    try {
-      user = await User.findById(decoded.id).select('-password');
-    } catch {
-      // In-memory or fallback mode
-      user = null;
-    }
+    const user = await User.findById(decoded.id).select('-password');
 
-    // Fallback user object from token payload if DB is in fallback mode
     if (!user) {
-      user = {
-        _id: decoded.id,
-        id: decoded.id,
-        name: decoded.name || 'Verified Member',
-        email: decoded.email,
-        role: decoded.role || 'buyer',
-        company: decoded.company || '',
-        isVerified: true,
-      };
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized: User account no longer exists.',
+      });
     }
 
     req.user = user;
@@ -71,4 +57,3 @@ export const requireRole = (...roles) => {
 };
 
 export { JWT_SECRET };
-

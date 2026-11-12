@@ -35,60 +35,46 @@ interface OfferItem {
   createdAt: string;
 }
 
-const INITIAL_OFFERS: OfferItem[] = [
-  {
-    _id: 'offer-1',
-    buyerName: 'David Reynolds',
-    buyerEmail: 'buyer@resalehub.com',
-    company: 'Apex Capital Partners LLC',
-    listingTitle: 'High-Volume QSR Franchise - North Denver Metro',
-    offerAmount: 1400000,
-    cashDownPayment: 420000, // 30%
-    financingType: 'SBA 7(a) Loan',
-    closingTimelineDays: 60,
-    contingencies: [
-      'Franchisor Transfer & Brand Approval',
-      'Commercial Lease Assignment Consent',
-      'Final 30-Day Financial & Tax Audit',
-    ],
-    status: 'submitted',
-    notes: 'Pre-approved with Live Oak Bank for 70% SBA 7(a). Ready to close within 60 days.',
-    createdAt: new Date().toISOString(),
-  },
-];
-
 export default function SellerOffersPage() {
-  const { user, token } = useAuth();
-  const [offers, setOffers] = useState<OfferItem[]>(INITIAL_OFFERS);
-  const [loading, setLoading] = useState(false);
+  const { token } = useAuth();
+  const [offers, setOffers] = useState<OfferItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
   const fetchOffers = async () => {
+    if (!token) return;
     try {
       setLoading(true);
-      const res = await fetch('/api/offers/listing/663f10111111111111111101', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      setError(null);
+      const res = await fetch('/api/offers/seller', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.offers && data.offers.length > 0) {
-          setOffers(data.offers);
-        }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to load offers from database.');
       }
-    } catch {
-      // Keep initial offers
+      const data = await res.json();
+      setOffers(Array.isArray(data.offers) ? data.offers : []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load offers.');
+      setOffers([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOffers();
+    if (token) {
+      fetchOffers();
+    } else {
+      setLoading(false);
+    }
   }, [token]);
 
   const handleUpdateStatus = async (id: string, newStatus: 'accepted' | 'rejected') => {
     try {
-      await fetch(`/api/offers/${id}/status`, {
+      const res = await fetch(`/api/offers/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -96,15 +82,21 @@ export default function SellerOffersPage() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-    } catch {
-      // fallback
-    }
 
-    setOffers((prev) =>
-      prev.map((o) => (o._id === id || o.id === id ? { ...o, status: newStatus } : o))
-    );
-    setNotification(`Offer has been marked as ${newStatus.toUpperCase()}.`);
-    setTimeout(() => setNotification(null), 4000);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to update offer status.');
+      }
+
+      setOffers((prev) =>
+        prev.map((o) => (o._id === id || o.id === id ? { ...o, status: newStatus } : o))
+      );
+      setNotification(`Offer has been marked as ${newStatus.toUpperCase()}.`);
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err: any) {
+      setNotification(err.message || 'Unable to update offer status.');
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
 
   const formatCurrency = (val: number) => {
@@ -157,7 +149,20 @@ export default function SellerOffersPage() {
           </span>
         </div>
 
-        {offers.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
+            <div className="w-10 h-10 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin mx-auto mb-3" />
+            <p className="font-black text-xs uppercase tracking-widest text-slate-500">
+              Loading Purchase Offers from Database...
+            </p>
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-rose-200 shadow-sm">
+            <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-3" />
+            <h3 className="font-black text-base text-slate-900 uppercase">Unable to Load Offers</h3>
+            <p className="text-xs text-slate-500 mt-1">{error}</p>
+          </div>
+        ) : offers.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm">
             <FileCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h3 className="font-black text-base text-slate-900 uppercase">No Offers Received Yet</h3>

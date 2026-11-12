@@ -213,15 +213,31 @@ export default function ListingDetailPage() {
     }
   };
 
-  const handleUpdateProofOfFunds = (e: React.FormEvent) => {
+  const handleUpdateProofOfFunds = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (userLiquidOverride === null) return;
     setUploadingProof(true);
-    setTimeout(() => {
-      setUploadingProof(false);
+    try {
+      const res = await fetch('/api/auth/liquidity', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ liquidCapital: Number(userLiquidOverride) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to update liquid capital.');
+      }
       setProofModalOpen(false);
-      setNotification(`Proof of funds document verified. Liquid capital recorded at $${Number(userLiquidOverride).toLocaleString()}.`);
+      setNotification(`Proof of funds saved to database. Liquid capital verified at $${Number(userLiquidOverride).toLocaleString()}.`);
       setTimeout(() => setNotification(null), 5000);
-    }, 800);
+    } catch (err: any) {
+      alert(err.message || 'Error updating proof of funds.');
+    } finally {
+      setUploadingProof(false);
+    }
   };
 
   const handleSubmitOffer = async (e: React.FormEvent) => {
@@ -282,7 +298,7 @@ export default function ListingDetailPage() {
   // FR-BUY-01: Automated 30% Liquid Capital Calculation
   const askingPrice = listing?.askingPrice || 0;
   const requiredLiquidCapital = Math.round(0.3 * askingPrice);
-  const activeLiquidCapital = userLiquidOverride !== null ? userLiquidOverride : (user?.liquidCapital || 250000);
+  const activeLiquidCapital = userLiquidOverride !== null ? userLiquidOverride : (user?.liquidCapital ?? 0);
   const isQualifiedBuyer = activeLiquidCapital >= requiredLiquidCapital;
 
   if (isLoading || loading) {

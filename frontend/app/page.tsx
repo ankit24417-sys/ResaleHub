@@ -18,128 +18,11 @@ import {
   Users,
 } from 'lucide-react';
 
-const FALLBACK_LISTINGS: ListingTeaser[] = [
-  {
-    _id: '663f10111111111111111101',
-    publicTitle: 'High-Volume QSR Franchise - North Denver Metro',
-    category: 'Food & Beverage',
-    brand: "Jersey Mike's",
-    region: 'Denver Metro, CO',
-    state: 'CO',
-    askingPrice: 1450000,
-    cashFlow: 385000,
-    grossRevenue: 2180000,
-    inventory: 35000,
-    establishedYear: 2016,
-    employeeCount: 16,
-    teaserSummary:
-      'Premier drive-thru Quick Service Restaurant located in an affluent, rapid-growth northern Denver submarket. Consistent 14% year-over-year revenue gains with tenured management.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80',
-    highlights: [
-      'High-traffic pad site with double-lane drive-thru',
-      'Fully remodeled in 2023 to meet latest brand standards',
-      'Over 90% customer retention with automated digital app orders',
-    ],
-  },
-  {
-    _id: '663f10111111111111111102',
-    publicTitle: 'Turnkey 24/7 Boutique Fitness Studio - North Austin',
-    category: 'Fitness & Wellness',
-    brand: 'Anytime Fitness',
-    region: 'Austin Metro, TX',
-    state: 'TX',
-    askingPrice: 895000,
-    cashFlow: 265000,
-    grossRevenue: 840000,
-    inventory: 12000,
-    establishedYear: 2018,
-    employeeCount: 6,
-    teaserSummary:
-      'High-margin, recurring monthly subscription fitness facility in a booming tech corridor. Boasts 1,150 active recurring members with automated biometric keycard access.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=80',
-    highlights: [
-      '1,150+ monthly auto-renewing memberships producing steady ARR',
-      'Cutting-edge Matrix strength & cardio equipment fully unencumbered',
-      'Low owner involvement: run semi-absentee with 2 full-time staff',
-    ],
-  },
-  {
-    _id: '663f10111111111111111103',
-    publicTitle: 'Premier Multi-Bay Transmission & Auto Repair Center',
-    category: 'Automotive Services',
-    brand: 'AAMCO',
-    region: 'Phoenix East Valley, AZ',
-    state: 'AZ',
-    askingPrice: 1150000,
-    cashFlow: 340000,
-    grossRevenue: 1720000,
-    inventory: 48000,
-    establishedYear: 2014,
-    employeeCount: 9,
-    teaserSummary:
-      'Established 8-bay automotive service shop backed by a national household automotive brand. Strong fleet maintenance recurring contracts with municipal and corporate accounts.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=1200&q=80',
-    highlights: [
-      '8 modern service bays, 6 hydraulic lifts, and Hunter alignment machine',
-      '14 corporate fleet service contracts providing guaranteed baseline work',
-      'ASE-certified lead technician and service writers with 7+ years tenure',
-    ],
-  },
-  {
-    _id: '663f10111111111111111104',
-    publicTitle: 'Essential Commercial Cleaning & Disinfection Franchise',
-    category: 'Commercial & Home Services',
-    brand: 'JAN-PRO',
-    region: 'Tampa Bay Area, FL',
-    state: 'FL',
-    askingPrice: 625000,
-    cashFlow: 198000,
-    grossRevenue: 780000,
-    inventory: 15000,
-    establishedYear: 2019,
-    employeeCount: 18,
-    teaserSummary:
-      'High-margin, recurring B2B cleaning and facility disinfection enterprise. Highly scalable operational model with 42 long-term commercial contracts with medical clinics and schools.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80',
-    highlights: [
-      '42 ongoing multi-year commercial cleaning contracts',
-      'No physical retail footprint needed: low overhead home/flex warehouse base',
-      'Automated time tracking & client quality inspection software in place',
-    ],
-  },
-  {
-    _id: '663f10111111111111111105',
-    publicTitle: 'Accredited In-Home Senior Care & Companion Agency',
-    category: 'Health & Medical',
-    brand: 'Visiting Angels',
-    region: 'Charlotte Metro, NC',
-    state: 'NC',
-    askingPrice: 1850000,
-    cashFlow: 520000,
-    grossRevenue: 3450000,
-    inventory: 5000,
-    establishedYear: 2015,
-    employeeCount: 32,
-    teaserSummary:
-      'Recession-proof, high-reputation private pay in-home care agency serving wealthy residential enclaves in south Charlotte. 94% private pay revenue model with hospital referrals.',
-    imageUrl:
-      'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?auto=format&fit=crop&w=1200&q=80',
-    highlights: [
-      'Over $520K verified annual cash flow with 94% private pay mix',
-      'Exclusive franchise rights covering two high-income zip code clusters',
-      'Director of Nursing (RN) and scheduling coordinator running daily dispatch',
-    ],
-  },
-];
-
 export default function HomePage() {
   const { isAuthenticated, token } = useAuth();
-  const [listings, setListings] = useState<ListingTeaser[]>(FALLBACK_LISTINGS);
+  const [listings, setListings] = useState<ListingTeaser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -152,38 +35,41 @@ export default function HomePage() {
   useEffect(() => {
     const fetchListings = async () => {
       try {
+        setLoading(true);
+        setFetchError(null);
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const res = await fetch('/api/listings', { headers });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.listings && data.listings.length > 0) {
-            setListings(data.listings);
-          }
+        const params = new URLSearchParams();
+        if (filters.brand !== 'All Brands') {
+          params.set('brand', filters.brand);
         }
-      } catch (err) {
-        console.warn('Using client fallback listings:', err);
+
+        const qs = params.toString();
+        const url = qs ? `/api/listings?${qs}` : '/api/listings';
+
+        const res = await fetch(url, { headers });
+        if (!res.ok) {
+          throw new Error('Failed to fetch listings from database.');
+        }
+        const data = await res.json();
+        setListings(Array.isArray(data.listings) ? data.listings : []);
+      } catch (err: any) {
+        console.error('Error fetching listings from database:', err);
+        setFetchError(err.message || 'Unable to load listings from MongoDB.');
+        setListings([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchListings();
-  }, [token, isAuthenticated]);
+  }, [token, isAuthenticated, filters.brand]);
 
   const filteredListings = useMemo(() => {
     return listings.filter((item) => {
       if (filters.category !== 'All Categories' && item.category !== filters.category) {
         return false;
-      }
-      if (filters.brand !== 'All Brands') {
-        const b = filters.brand.toLowerCase();
-        const brandMatch =
-          (item.brand && item.brand.toLowerCase().includes(b)) ||
-          item.publicTitle.toLowerCase().includes(b) ||
-          item.teaserSummary.toLowerCase().includes(b);
-        if (!brandMatch) return false;
       }
       if (filters.state !== 'All States' && item.state !== filters.state) {
         return false;
@@ -262,7 +148,34 @@ export default function HomePage() {
         </div>
 
         {/* Listings Grid Cards */}
-        {filteredListings.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3].map((idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-2xl border border-slate-100 shadow-lg overflow-hidden animate-pulse"
+              >
+                <div className="h-48 bg-slate-200" />
+                <div className="p-6 space-y-4">
+                  <div className="h-5 bg-slate-200 rounded w-3/4" />
+                  <div className="h-3 bg-slate-200 rounded w-1/2" />
+                  <div className="h-12 bg-slate-100 rounded" />
+                  <div className="h-16 bg-slate-200 rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : fetchError ? (
+          <div className="py-16 text-center bg-white rounded-2xl border border-rose-200 shadow-sm p-8">
+            <Building className="w-12 h-12 text-rose-300 mx-auto mb-4" />
+            <h3 className="font-black text-lg text-slate-900 uppercase tracking-tight">
+              Database Connection Unavailable
+            </h3>
+            <p className="mt-2 text-xs text-slate-500 max-w-md mx-auto">
+              {fetchError}
+            </p>
+          </div>
+        ) : filteredListings.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredListings.map((listing) => (
               <ListingTeaserCard key={listing._id} listing={listing} />

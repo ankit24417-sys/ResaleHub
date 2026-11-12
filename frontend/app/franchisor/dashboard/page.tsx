@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 
 interface TransferCandidate {
-  id: string;
+  _id: string;
+  id?: string;
   candidateName: string;
   company: string;
   storeUnit: string;
@@ -37,54 +38,6 @@ interface TransferCandidate {
   status: 'In Review' | 'Approved' | 'Action Needed';
 }
 
-const INITIAL_CANDIDATES: TransferCandidate[] = [
-  {
-    id: 'tx-101',
-    candidateName: 'David Reynolds',
-    company: 'Apex Capital Partners LLC',
-    storeUnit: 'Westminster Flagship #14022',
-    brand: "Jersey Mike's Subs",
-    region: 'Denver Metro, CO',
-    liquidCapital: 750000,
-    netWorth: 2500000,
-    creditScore: '755 (FICO - Tier 1 Excellent)',
-    backgroundCheckStatus: 'Clear',
-    fddAcknowledgedDate: '2026-10-18',
-    stage: 2,
-    status: 'In Review',
-  },
-  {
-    id: 'tx-102',
-    candidateName: 'Dr. Kimberly Vance',
-    company: 'Lonestar Wellness Holdings',
-    storeUnit: 'Tech Ridge Center #218',
-    brand: 'Anytime Fitness',
-    region: 'Austin Metro, TX',
-    liquidCapital: 340000,
-    netWorth: 1800000,
-    creditScore: '728 (FICO - Prime)',
-    backgroundCheckStatus: 'Clear',
-    fddAcknowledgedDate: '2026-09-30',
-    stage: 3,
-    status: 'In Review',
-  },
-  {
-    id: 'tx-103',
-    candidateName: 'Marcus Bradley',
-    company: 'Suncoast Care Ventures',
-    storeUnit: 'Tampa Bay Central #401',
-    brand: 'JAN-PRO Commercial Cleaning',
-    region: 'Tampa Bay Area, FL',
-    liquidCapital: 195000,
-    netWorth: 620000,
-    creditScore: '695 (FICO - Good)',
-    backgroundCheckStatus: 'Clear',
-    fddAcknowledgedDate: '2026-10-24',
-    stage: 1,
-    status: 'Action Needed',
-  },
-];
-
 // Exact PRD FR-FRA-02 Four-Step Sequential State Machine
 const STAGES = [
   '1. Initial Screening',
@@ -94,30 +47,78 @@ const STAGES = [
 ];
 
 export default function FranchisorDashboardPage() {
-  const { user, isAuthenticated } = useAuth();
-  const [candidates, setCandidates] = useState<TransferCandidate[]>(INITIAL_CANDIDATES);
+  const { token } = useAuth();
+  const [candidates, setCandidates] = useState<TransferCandidate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
-  const handleAdvanceStage = (id: string) => {
-    setCandidates((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const nextStage = Math.min(c.stage + 1, 4);
-          const isFinal = nextStage === 4;
-          setNotification(
-            `Candidate ${c.candidateName} advanced to Stage ${nextStage}: ${STAGES[nextStage - 1]}`
-          );
-          setTimeout(() => setNotification(null), 4000);
-          return {
-            ...c,
-            stage: nextStage,
-            status: isFinal ? 'Approved' : 'In Review',
-          };
+  useEffect(() => {
+    const fetchTransfers = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/transfers', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to load transfer pipeline from database.');
         }
-        return c;
-      })
-    );
+        const data = await res.json();
+        setCandidates(Array.isArray(data.transfers) ? data.transfers : []);
+      } catch (err: any) {
+        setError(err.message || 'Unable to fetch franchisor transfer records.');
+        setCandidates([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransfers();
+  }, [token]);
+
+  const handleAdvanceStage = async (id: string) => {
+    try {
+      const res = await fetch(`/api/transfers/${id}/advance`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to advance candidate stage.');
+      }
+
+      const data = await res.json();
+      const updated = data.transfer;
+
+      setCandidates((prev) =>
+        prev.map((c) => ((c._id || c.id) === id ? updated : c))
+      );
+      setNotification(
+        `Candidate ${updated.candidateName} advanced to Stage ${updated.stage}: ${STAGES[updated.stage - 1]}`
+      );
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err: any) {
+      setNotification(err.message || 'Error updating candidate stage.');
+      setTimeout(() => setNotification(null), 4000);
+    }
   };
+
+  const avgLiquidity =
+    candidates.length > 0
+      ? Math.round(
+          candidates.reduce((sum, c) => sum + (c.liquidCapital || 0), 0) /
+            candidates.length
+        )
+      : 0;
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -157,7 +158,7 @@ export default function FranchisorDashboardPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Active Store Transfers
               </span>
-              <p className="font-black text-3xl text-slate-900 mt-1">3 Candidates</p>
+              <p className="font-black text-3xl text-slate-900 mt-1">{candidates.length} Candidates</p>
               <p className="text-[11px] text-emerald-600 font-bold mt-0.5">Brand transfer queue</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
@@ -183,7 +184,7 @@ export default function FranchisorDashboardPage() {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Average Buyer Liquidity
               </span>
-              <p className="font-black text-3xl text-slate-900 mt-1">$428,000</p>
+              <p className="font-black text-3xl text-slate-900 mt-1">{formatCurrency(avgLiquidity)}</p>
               <p className="text-[11px] text-emerald-600 font-bold mt-0.5">&gt; 30% Asking Price Rule</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center font-bold">
@@ -217,15 +218,36 @@ export default function FranchisorDashboardPage() {
               </h3>
             </div>
             <span className="px-4 py-1.5 rounded-full bg-slate-950 text-emerald-400 font-black text-xs uppercase tracking-wider">
-              3 Candidates Under Review
+              {candidates.length} Candidates Under Review
             </span>
           </div>
 
           {/* Candidates Pipeline Cards */}
-          <div className="space-y-6">
-            {candidates.map((c) => (
+          {loading ? (
+            <div className="py-16 text-center space-y-3">
+              <div className="w-10 h-10 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin mx-auto" />
+              <p className="font-black text-xs uppercase tracking-widest text-slate-500">
+                Loading Franchisor Pipeline from Database...
+              </p>
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center bg-rose-50 rounded-2xl border border-rose-200 p-6">
+              <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-2" />
+              <p className="font-black text-sm text-slate-900 uppercase">Unable to Load Pipeline</p>
+              <p className="text-xs text-slate-600 mt-1">{error}</p>
+            </div>
+          ) : candidates.length === 0 ? (
+            <div className="py-12 text-center bg-slate-50 rounded-2xl border border-slate-200 p-6">
+              <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="font-black text-sm text-slate-900 uppercase">No Active Transfer Applications</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {candidates.map((c) => {
+                const candidateId = c._id || c.id || '';
+                return (
               <div
-                key={c.id}
+                key={candidateId}
                 className="p-6 rounded-2xl bg-slate-50 border border-slate-200 hover:border-emerald-500/50 transition-all space-y-5"
               >
                 {/* Top Info */}
@@ -323,7 +345,7 @@ export default function FranchisorDashboardPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => handleAdvanceStage(c.id)}
+                      onClick={() => handleAdvanceStage(candidateId)}
                       disabled={c.stage >= 4 && c.status === 'Approved'}
                       className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 shadow-md flex items-center gap-1.5"
                     >
@@ -347,8 +369,10 @@ export default function FranchisorDashboardPage() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+              );
+              })}
+            </div>
+          )}
 
         </div>
 

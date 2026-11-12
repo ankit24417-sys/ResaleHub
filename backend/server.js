@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes.js';
 import listingRoutes from './routes/listingRoutes.js';
 import ndaRoutes from './routes/ndaRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
+import transferRoutes from './routes/transferRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/nda', ndaRoutes);
 app.use('/api/offers', offerRoutes);
+app.use('/api/transfers', transferRoutes);
 
 // Global 404 handler for unknown routes
 app.use((req, res) => {
