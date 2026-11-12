@@ -18,8 +18,10 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        'https://resale-hub-p4f6.vercel.app/',
-        process.env.FRONTEND_URL,
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://resale-hub-p4f6.vercel.app',
+        process.env.FRONTEND_URL?.replace(/\/+$/, ''),
       ].filter(Boolean);
 
       // Allow non-browser requests (curl, server-to-server) or explicitly allowed origins / Vercel previews

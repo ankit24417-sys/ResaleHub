@@ -36,7 +36,11 @@ function loadRootEnv() {
 
 loadRootEnv();
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// Normalize API URL so values like "https://resale-hub-tau.vercel.app/" or ".../api" both resolve cleanly
+const rawApiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api')
+  .trim()
+  .replace(/\/+$/, '');
+const apiUrl = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl}/api`;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
