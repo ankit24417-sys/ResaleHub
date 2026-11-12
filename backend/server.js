@@ -18,8 +18,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
+        'https://resale-hub-p4f6.vercel.app/',
         process.env.FRONTEND_URL,
       ].filter(Boolean);
 
